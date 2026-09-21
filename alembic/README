@@ -1,0 +1,2 @@
+Generic single-database configuration with an async dbapi (asyncpg), driven by
+`app.core.config.settings.DATABASE_URL`.
