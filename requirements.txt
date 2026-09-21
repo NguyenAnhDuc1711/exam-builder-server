@@ -7,6 +7,7 @@ pydantic>=2.8,<3
 pydantic-settings>=2.4,<3
 python-jose[cryptography]>=3.3,<4
 passlib[bcrypt]>=1.7,<2
+bcrypt>=4.0,<4.1  # pinned: passlib 1.7.4's version probe errors against bcrypt>=4.1
 cloudinary>=1.41,<2
 pytest>=8.3,<9
 pytest-asyncio>=0.24,<0.25

@@ -1,9 +1,9 @@
 ---
 name: exam-builder-base
-status: backlog
-progress: 0%
+status: in-progress
+progress: 100%
 created: 2026-09-21T09:15:38Z
-updated: 2026-09-21T09:22:14Z
+updated: 2026-09-21T10:11:47Z
 prd: exam-builder-base
 github: ""
 ---
