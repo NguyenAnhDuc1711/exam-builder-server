@@ -1,11 +1,11 @@
 ---
 name: exam-builder-base
 description: Base backend cho hệ thống giao đề trắc nghiệm và chấm điểm tự động, dành cho một tổ chức đơn lẻ
-status: validated
+status: complete
 priority: high
 scale: medium
 created: 2026-09-21T09:12:26Z
-updated: 2026-09-21T09:14:32Z
+updated: 2026-09-21T10:19:04Z
 ---
 
 # PRD: exam-builder-base
