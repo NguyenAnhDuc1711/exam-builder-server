@@ -1,0 +1,62 @@
+"""Schema invariants that need no database.
+
+NOTE (T002): written without a Python runtime available in the authoring
+environment — unexecuted, see the T002 handoff.
+"""
+
+from pathlib import Path
+
+import app.infrastructure.db.models  # noqa: F401  (registers tables)
+from app.infrastructure.db.base import Base
+
+EXPECTED_TABLES = {
+    "user",
+    "question",
+    "option",
+    "exam",
+    "exam_question",
+    "exam_assignment",
+    "submission",
+    "answer",
+    "refresh_token",
+}
+
+ENTITIES_DIR = Path(__file__).resolve().parents[2] / "app" / "domain" / "entities"
+
+
+def test_all_nine_tables_are_defined():
+    assert set(Base.metadata.tables) == EXPECTED_TABLES
+
+
+def test_no_multi_tenant_columns_anywhere():
+    """NFR-3: single-tenant — no `organization_id` / tenant concept."""
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            name = column.name.lower()
+            assert "organization" not in name, f"{table.name}.{column.name}"
+            assert "tenant" not in name, f"{table.name}.{column.name}"
+
+
+def test_domain_entities_do_not_import_sqlalchemy():
+    """AD-1: `app/domain/` stays framework-free."""
+    for path in ENTITIES_DIR.glob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        assert "sqlalchemy" not in source.lower(), path.name
+
+
+def test_submission_enforces_single_attempt():
+    constraint_columns = {
+        tuple(c.name for c in uq.columns)
+        for uq in Base.metadata.tables["submission"].constraints
+        if hasattr(uq, "columns") and uq.__class__.__name__ == "UniqueConstraint"
+    }
+    assert ("exam_assignment_id",) in constraint_columns
+
+
+def test_exam_assignment_is_unique_per_exam_and_user():
+    constraint_columns = {
+        tuple(c.name for c in uq.columns)
+        for uq in Base.metadata.tables["exam_assignment"].constraints
+        if hasattr(uq, "columns") and uq.__class__.__name__ == "UniqueConstraint"
+    }
+    assert ("exam_id", "user_id") in constraint_columns

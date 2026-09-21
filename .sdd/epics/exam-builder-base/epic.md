@@ -1,9 +1,11 @@
 ---
 name: exam-builder-base
-status: backlog
-progress: 0%
+status: completed
+progress: 100%
 created: 2026-09-21T09:15:38Z
-updated: 2026-09-21T09:22:14Z
+updated: 2026-09-21T10:19:04Z
+completed: 2026-09-21T10:19:04Z
+verification: EPIC_PARTIAL — Phase B (build/lint/unit/integration) never executed, no Python/Docker in the build environment. See .sdd/context/verify/epic-reports/exam-builder-base-final-20260921-101732.md. Run the suite for real before trusting this in production.
 prd: exam-builder-base
 github: ""
 ---
