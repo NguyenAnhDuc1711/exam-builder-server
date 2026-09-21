@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.v1.routers import auth, questions, users
+from app.api.v1.routers import auth, exams, questions, users
 
 app = FastAPI(title="Exam Builder API")
 
@@ -9,6 +9,7 @@ app = FastAPI(title="Exam Builder API")
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(questions.router)
+app.include_router(exams.router)
 
 
 @app.get("/health")
