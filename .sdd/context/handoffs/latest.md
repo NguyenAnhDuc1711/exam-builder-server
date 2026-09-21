@@ -1,118 +1,159 @@
-# Handoff: T001 — Project scaffolding + Docker Compose + Alembic init
+# Handoff: T002 — Domain entities + SQLAlchemy models + initial migration
 
 ## What Was Done
 
-- Created the Clean Architecture skeleton under `app/` per epic AD-1:
-  `domain/{entities,repositories}`, `application/{use_cases,ports}`,
-  `infrastructure/{db/{models,repositories},auth,storage}`,
-  `api/v1/{routers,schemas}`, `core/`. Every package has an empty
-  `__init__.py`.
-- `app/core/config.py`: Pydantic v2 `BaseSettings` (`pydantic-settings`)
-  reading `DATABASE_URL`, `JWT_SECRET_KEY`, `JWT_ACCESS_EXPIRE_MINUTES`
-  (default 1440), `JWT_REFRESH_EXPIRE_DAYS` (default 7),
-  `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
-  from env / `.env`. Required fields have no defaults so startup fails
-  fast if misconfigured. A module-level `settings = Settings()` singleton
-  is exported for import elsewhere.
-- `app/main.py`: empty FastAPI app + `GET /health` -> `{"status": "ok"}`.
-  No other routes/business logic added, per task scope.
-- `Dockerfile`: `python:3.12-slim`, installs `requirements.txt`, runs
-  `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-- `docker-compose.yml`: `postgres` (image `postgres:16`, named volume,
-  `pg_isready` healthcheck), `api` (build from Dockerfile, `env_file: .env`,
-  `depends_on: postgres: condition: service_healthy`), `pgadmin`
-  (`dpage/pgadmin4`, port `5050:80`).
-- `requirements.txt`: fastapi, uvicorn[standard], sqlalchemy[asyncio],
-  asyncpg, alembic, pydantic, pydantic-settings, python-jose[cryptography],
-  passlib[bcrypt], cloudinary, pytest, pytest-asyncio, httpx.
-- Alembic initialized at repo root (`alembic.ini`, `alembic/env.py`,
-  `alembic/script.py.mako`, `alembic/README`, `alembic/versions/.gitkeep`)
-  using the **async** template (matches SQLAlchemy 2.0 async engine, not
-  the plain sync template `alembic init alembic` would generate).
-  `alembic/env.py` overrides `sqlalchemy.url` at runtime from
-  `app.core.config.settings.DATABASE_URL` — single source of truth for the
-  connection string. `target_metadata = None` for now; T002 must set it to
-  the shared declarative `Base.metadata`.
-- `.env.example`: lists every variable consumed by `config.py` and by
-  `docker-compose.yml` (`POSTGRES_*`, `PGADMIN_DEFAULT_*`). No real
-  secrets — placeholder/dev-friendly defaults only.
-- `.gitignore`: added (`.env`, `__pycache__/`, `.venv/`, `*.pyc`,
-  `.pytest_cache/`, etc.) — did not exist before this task; needed so a
-  real `.env` never gets committed.
+- **Domain entities** (`app/domain/entities/`, plain dataclasses, zero
+  SQLAlchemy/Pydantic imports per AD-1): `user.py` (`User`, `Role`),
+  `question.py` (`Question`, `Option` + `has_single_answer()` /
+  `correct_option_id()` helpers for the "exactly one correct option" rule
+  that cannot be a DB constraint), `exam.py` (`Exam`, `ExamAssignment`),
+  `submission.py` (`Submission`, `Answer`). Re-exported from
+  `app/domain/entities/__init__.py`.
+- **SQLAlchemy 2.0 ORM models** (`app/infrastructure/db/models/`), async-
+  compatible `DeclarativeBase` + `Mapped`/`mapped_column` style:
+  `user.py`, `question.py` (Question/Option), `exam.py` (Exam/
+  ExamQuestion/ExamAssignment), `submission.py` (Submission/Answer),
+  `refresh_token.py`. 9 tables total.
+- **`app/infrastructure/db/base.py`** (new, not in the task's file list but
+  required): the shared `Base(DeclarativeBase)`. `models/__init__.py`
+  imports every model module so `Base.metadata` is always complete.
+- **`app/infrastructure/db/session.py`**: `create_async_engine(
+  settings.DATABASE_URL, pool_pre_ping=True)`, `AsyncSessionLocal =
+  async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)`,
+  and an `async def get_session() -> AsyncGenerator[AsyncSession, None]`
+  FastAPI dependency. It does **not** commit — the use case owns the
+  transaction boundary (CRIT-1).
+- **`alembic/versions/0001_initial.py`**: hand-written (no `--autogenerate`
+  possible, see Warnings). `revision = "0001_initial"`,
+  `down_revision = None`. Creates all 9 tables with FKs, indexes and both
+  critical unique constraints; `downgrade()` drops them in reverse order.
+- **`alembic/env.py`** (T001 file, minimally edited as T001 instructed):
+  `target_metadata = Base.metadata` and `import app.infrastructure.db.models`.
+  No other T001 file was touched — `app/core/config.py` already exposed
+  everything `session.py` needed.
+- **Tests** (unexecuted): `pytest.ini` (`pythonpath = .`,
+  `asyncio_mode = auto`), `tests/conftest.py` (env priming + per-test
+  `db_engine`/`session` fixtures), `tests/unit/test_schema_invariants.py`
+  (9 tables, no org/tenant column, domain entities import no SQLAlchemy,
+  both unique constraints present),
+  `tests/integration/test_schema_constraints.py` (duplicate assignment →
+  IntegrityError, second submission → IntegrityError, question delete
+  cascades to options), `tests/integration/test_migrations.py`
+  (`upgrade head` / `downgrade base` / no tenant columns in the migrated DB).
 
 ## Decisions Made
 
-- **Async SQLAlchemy + asyncpg**, per task instructions and epic's
-  "FastAPI + PostgreSQL/SQLAlchemy" stack — enables non-blocking I/O
-  under FastAPI's async request handlers, avoids mixing sync/async DB
-  drivers. `DATABASE_URL` in `.env.example` uses the
-  `postgresql+asyncpg://` scheme.
-- **Alembic async template** (`alembic init -t async` equivalent, hand-
-  written since no local Python/Alembic CLI was available in this
-  environment — see Warnings) rather than the sync default, since a sync
-  `alembic.ini`/`env.py` would not accept an `asyncpg` URL without extra
-  driver-swapping hacks.
-- **`requirements.txt` over `pyproject.toml`** — task allowed either;
-  chose the simpler, boilerplate-free option since there's no package
-  distribution need yet (Karpathy: simplicity first).
-- **No `app/infrastructure/db/session.py` created yet** — AD-1 shows it
-  in the target layout, but T001's explicit implementation steps don't
-  call for it and there are no models to bind a session/engine to yet.
-  Left as a T002 responsibility (see Warnings below).
-- **No `app/api/dependencies.py` created** — AD-1 lists it, but it has no
-  content until `require_role`/`get_current_user` exist in T003. Skipped
-  to keep this task to directory-structure + infra only.
+- **Table names are all singular**, exactly as the task spec lists them:
+  `user, question, option, exam, exam_question, exam_assignment,
+  submission, answer, refresh_token`.
+  **`refresh_token` is singular — AD-2's prose says `refresh_tokens`.**
+  Singular wins for consistency with the other 8 tables; see Warnings.
+- `user` and `order` are **reserved SQL words**. SQLAlchemy and Alembic
+  quote them automatically, so the ORM works; any *hand-written* SQL must
+  spell them `"user"` / `"order"`.
+- **`exam_question` uses a composite PK `(exam_id, question_id)`** (the
+  spec allowed composite PK *or* surrogate + unique). This gives the
+  no-duplicate-question-per-exam guarantee for free; `order` is a plain
+  NOT NULL integer (no unique constraint on `(exam_id, order)` — not
+  required by the spec).
+- **`submission.score` is `Integer NOT NULL server_default 0`**, not
+  nullable. T020 can insert the Submission, flush for its id, insert the
+  Answers, then set `score` — all inside one transaction — without ever
+  leaving a NULL score for readers.
+- **`answer.selected_option_id` is nullable** = the question was left
+  unanswered (such an answer is never correct). `answer.question_id` and
+  `answer.selected_option_id` use the default RESTRICT (no cascade), so a
+  question/option that has been answered cannot be silently deleted.
+- **Cascades**: `option → question`, `exam_question → exam/question`,
+  `exam_assignment → exam/user`, `submission → exam_assignment`,
+  `answer → submission`, `refresh_token → user` are all
+  `ON DELETE CASCADE`. ORM relationships that mirror a cascade use
+  `passive_deletes=True` so the DB does the work.
+- **`user.role`** is `String(20)` + `CHECK (role IN ('admin','user'))`
+  (named `ck_user_role`) rather than a native PG ENUM — enums are painful
+  to alter in Alembic and the check gives the same guarantee.
+- **No `created_at`/`updated_at` columns** anywhere they were not asked
+  for. Only `exam_assignment.assigned_at` and `submission.submitted_at`
+  exist, both `TIMESTAMPTZ NOT NULL DEFAULT now()`.
+- **No `organization_id`, no tenant concept** (NFR-3) — asserted by a test
+  over `Base.metadata` *and* by a test over `information_schema` after
+  migrating.
 
 ## Files Changed
 
-- `app/__init__.py`, `app/main.py`
-- `app/core/__init__.py`, `app/core/config.py`
-- `app/domain/__init__.py`, `app/domain/entities/__init__.py`,
-  `app/domain/repositories/__init__.py`
-- `app/application/__init__.py`, `app/application/use_cases/__init__.py`,
-  `app/application/ports/__init__.py`
-- `app/infrastructure/__init__.py`, `app/infrastructure/db/__init__.py`,
-  `app/infrastructure/db/models/__init__.py`,
-  `app/infrastructure/db/repositories/__init__.py`,
-  `app/infrastructure/auth/__init__.py`,
-  `app/infrastructure/storage/__init__.py`
-- `app/api/__init__.py`, `app/api/v1/__init__.py`,
-  `app/api/v1/routers/__init__.py`, `app/api/v1/schemas/__init__.py`
-- `Dockerfile`, `docker-compose.yml`, `requirements.txt`, `.env.example`,
-  `.gitignore`
-- `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`,
-  `alembic/README`, `alembic/versions/.gitkeep`
-- `.sdd/epics/exam-builder-base/001.md` (frontmatter: status closed)
+Created:
+- `app/domain/entities/{__init__,user,question,exam,submission}.py`
+- `app/infrastructure/db/base.py`, `app/infrastructure/db/session.py`
+- `app/infrastructure/db/models/{__init__,user,question,exam,submission,refresh_token}.py`
+- `alembic/versions/0001_initial.py`
+- `pytest.ini`, `tests/__init__.py`, `tests/conftest.py`,
+  `tests/unit/{__init__,test_schema_invariants}.py`,
+  `tests/integration/{__init__,test_migrations,test_schema_constraints}.py`
 
-## Warnings for Next Task (T002)
+Modified:
+- `alembic/env.py` (target_metadata + models import only)
+- `.sdd/epics/exam-builder-base/002.md` (frontmatter: status closed)
 
-- **No Python or Docker was available in this execution environment** —
-  `python3`/`python`/`py` all resolved to the Windows Store stub, and
-  `docker`/`docker-compose` were not on PATH. None of this was run:
-  `pip install`, `python -c "import app.main"`, `docker-compose up`,
-  `alembic current`. Everything was written by hand, cross-checked
-  against the standard `alembic init -t async` output and FastAPI/
-  pydantic-settings v2 APIs from memory. **T002 (or whoever has a real
-  Python/Docker environment) should run `docker-compose up -d`,
-  `curl localhost:8000/health`, and `alembic current` before trusting
-  this scaffold further** — that's this task's acceptance criteria and
-  it is unverified.
-- `app/core/config.py` instantiates `settings = Settings()` at **import
-  time** with no defaults for `DATABASE_URL`, `JWT_SECRET_KEY`,
-  `CLOUDINARY_*`. Any import of `app.main` (including under pytest) will
-  raise a `pydantic.ValidationError` unless a `.env` file or equivalent
-  env vars are present. T002+ test suites need a `.env` (copied from
-  `.env.example`) or a pytest fixture that sets these env vars **before**
-  `app.core.config` is imported.
-- **T002 must create `app/infrastructure/db/session.py`** with the async
-  engine/session pattern (`create_async_engine(settings.DATABASE_URL)`,
-  `async_sessionmaker(engine, expire_on_commit=False)`) and set
-  `alembic/env.py`'s `target_metadata = Base.metadata` (currently `None`)
-  once the declarative `Base` and ORM models exist — otherwise
-  `alembic revision --autogenerate` will not detect any tables.
-- Naming convention to follow for consistency: entity/model files are
-  singular (`question.py`, `exam.py`), matching the epic's file list
-  (`app/domain/entities/*.py`, `app/infrastructure/db/models/*.py`).
-- `alembic/versions/` is empty except for `.gitkeep` (git doesn't track
-  empty dirs) — remove `.gitkeep` once the first real migration lands, or
-  leave it; either is harmless.
+## Schema Reference for T003 (refresh token repository)
+
+Model `app.infrastructure.db.models.refresh_token.RefreshToken`,
+table **`refresh_token`** (singular!). Exact columns:
+
+| column       | type            | constraints                                  |
+|--------------|-----------------|----------------------------------------------|
+| `id`         | `Integer`       | PK, autoincrement                            |
+| `user_id`    | `Integer`       | FK `user.id` ON DELETE CASCADE, NOT NULL, indexed |
+| `token_hash` | `String(64)`    | NOT NULL, **UNIQUE** (unique index `ix_refresh_token_token_hash`) |
+| `family_id`  | `String(36)`    | NOT NULL, indexed                            |
+| `revoked`    | `Boolean`       | NOT NULL, server_default `false`             |
+| `expires_at` | `DateTime(timezone=True)` | NOT NULL                           |
+
+- `token_hash` holds the **SHA-256 hex digest** (`hashlib.sha256(token
+  .encode()).hexdigest()` → exactly 64 chars). Never store plaintext (R-6).
+- `family_id` is a **UUID4 string** (`str(uuid.uuid4())`, 36 chars incl.
+  hyphens) — not a native UUID column, so compare/store as `str`.
+- There is **no `created_at`** column and **no domain entity** for refresh
+  tokens (AD-2: infrastructure concern only).
+- Revoking a family = `UPDATE refresh_token SET revoked = true WHERE
+  family_id = :family_id`.
+- The `user` table model is `app.infrastructure.db.models.user.User` with
+  columns `id, email (unique), password_hash, role` — `role` is a plain
+  string constrained to `'admin'`/`'user'`; the domain `Role` alias lives
+  in `app/domain/entities/user.py`.
+
+## Warnings for Next Task (T003)
+
+- **Nothing in this task was executed.** No Python and no Docker in this
+  environment (same as T001): `alembic upgrade head`, `pytest`, and even
+  `import app.infrastructure.db.models` were never run. T003 (or whoever
+  first has a real environment) should run, before building on this:
+  1. `docker-compose up -d postgres`
+  2. `alembic upgrade head` and then `alembic downgrade base`
+  3. `createdb exam_builder_test` (or `TEST_DATABASE_URL=...`) then `pytest`
+  Treat a failure here as a T002 defect and fix it in place.
+- **`refresh_token` vs `refresh_tokens` naming**: epic AD-2's prose says
+  `refresh_tokens`. The implemented table is **`refresh_token`**. If the
+  epic doc matters more than consistency, rename in `refresh_token.py` +
+  `0001_initial.py` *before* the migration is applied anywhere — it is a
+  two-line change now and a new migration later.
+- **`autoincrement`/`Identity`**: `sa.Integer` + `primary_key=True` renders
+  as `SERIAL` on PostgreSQL. If the team prefers `GENERATED BY DEFAULT AS
+  IDENTITY`, change it now while there is still only one migration.
+- `app/core/config.py` still instantiates `settings = Settings()` at import
+  time with no defaults, and **`app/infrastructure/db/session.py` creates
+  the engine at import time from `settings.DATABASE_URL`**. Importing
+  `session.py` (directly or via a router) therefore requires a valid
+  `DATABASE_URL` in the environment. `tests/conftest.py` handles this by
+  force-setting `DATABASE_URL` from `TEST_DATABASE_URL` *before* any `app.`
+  import — keep that ordering when you add fixtures.
+- Test DB defaults to
+  `postgresql+asyncpg://exam_builder:exam_builder@localhost:5432/exam_builder_test`;
+  it is **dropped and recreated per test**, so never point it at a dev DB.
+- `alembic/versions/.gitkeep` is still present next to the real migration;
+  harmless, delete whenever.
+- `tests/` is a real package (`__init__.py` in `tests/`, `tests/unit/`,
+  `tests/integration/`) because `test_migrations.py` imports
+  `tests.conftest`. Keep the `__init__.py` files if you add subfolders.
+- Migration tests are **synchronous on purpose** — `alembic/env.py` calls
+  `asyncio.run()` itself and will raise if invoked from inside a running
+  event loop (i.e. from an `async def` test).

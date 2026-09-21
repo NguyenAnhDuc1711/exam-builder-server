@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
+import app.infrastructure.db.models  # noqa: F401  (registers all tables)
 from app.core.config import settings
+from app.infrastructure.db.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -23,9 +25,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here for 'autogenerate' support.
-# T002 will set this to the shared SQLAlchemy declarative Base's
-# `.metadata` once ORM models exist.
-target_metadata = None
+# Importing `models` registers every ORM class on `Base.metadata`; without
+# that import autogenerate would see an empty schema.
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
