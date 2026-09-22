@@ -1,13 +1,3 @@
-"""Counting engine for rate limiting (AD-3, AD-4, AD-5, T010).
-
-Transport-agnostic (no FastAPI imports).
-Implements:
-1. Primary Redis fixed-window counter using single pipeline: INCR + EXPIRE NX + TTL (AD-3).
-2. Per-process in-memory fallback (_InMemoryWindow) with identical semantics (AD-4).
-3. 5-second circuit breaker on Redis errors or timeouts (>50ms) to protect latency budget (AD-4, AD-5).
-4. reset_for_tests() helper.
-"""
-
 import asyncio
 import logging
 import time

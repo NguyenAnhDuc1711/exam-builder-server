@@ -1,11 +1,3 @@
-"""`question` / `option` tables — SQLAlchemy 2.0 ORM models.
-
-`option.question_id` is NOT NULL with ON DELETE CASCADE: deleting a
-question removes its options. The "exactly one correct option" rule is not
-expressible as a simple DB constraint and is enforced in the application
-layer (see `app.services.create_question`).
-"""
-
 import sqlalchemy as sa
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship

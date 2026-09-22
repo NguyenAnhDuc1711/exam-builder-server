@@ -1,14 +1,3 @@
-"""Use case: admin assembles an exam from question bank entries (FR-4).
-
-WARN-1 fix (baked into 012.md): every `question_id` must exist in the
-question bank before ANY row is written. Existence is checked with a
-single `SELECT id FROM question WHERE id IN (...)`, compared as a set
-against the input set — not one query per id — and if anything is
-missing, `MissingQuestionsError` is raised *before* `session.add` is ever
-called. No exam/exam_question row is created on failure, so there is
-nothing to roll back.
-"""
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.exam import Exam, ExamQuestion

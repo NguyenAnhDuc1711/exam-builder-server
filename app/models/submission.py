@@ -1,10 +1,3 @@
-"""`submission` / `answer` tables.
-
-`submission.exam_assignment_id` is UNIQUE — this is the DB-level guarantee
-behind FR-6's single-attempt rule: a second submission for the same
-assignment raises `IntegrityError`.
-"""
-
 import sqlalchemy as sa
 from datetime import datetime
 

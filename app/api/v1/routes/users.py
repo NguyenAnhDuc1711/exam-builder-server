@@ -1,11 +1,3 @@
-"""`/users` — admin-only account creation (FR-2).
-
-`POST /users` lets an admin provision a `user` account directly. Public
-self-service sign-up is also available via `POST /auth/register`
-(`app/api/v1/routes/auth.py`); both routes share `create_user` and always
-create `role="user"` accounts.
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -6,6 +6,6 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-.claude/
-.sdd/
-/skill/
+.claude
+.sdd
+skill

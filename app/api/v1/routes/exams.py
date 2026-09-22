@@ -1,10 +1,3 @@
-"""`/exams` — admin-only exam assembly + assignment (FR-4, FR-5).
-
-Every route requires `role="admin"` — a router-level gate applied where
-this router is mounted (`app/api/v1/routers/__init__.py`), same pattern as
-`app/api/v1/routers/questions.py`.
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_role

@@ -1,13 +1,3 @@
-"""Password Reset Service (FR-1, FR-5, FR-6, FR-8, NFR-5, T012).
-
-Orchestrates:
-1. `forgot_password`: OTP request + async background email dispatch with timing parity.
-2. `verify_otp_step`: OTP verification -> reset token generation.
-3. `reset_password_step`: Reset token resolution -> update password & password_changed_at -> revoke all tokens.
-
-Structured correlation logging uses HMAC-SHA256 (JWT_SECRET_KEY) to avoid email enumeration via logs.
-"""
-
 import hashlib
 import hmac
 import logging

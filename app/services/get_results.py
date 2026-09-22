@@ -1,20 +1,3 @@
-"""Use case: reading submission results (FR-7).
-
-**CRIT-2 — ownership is checked before any submission data is read.**
-`get_submission` deliberately runs in two steps: the first query selects
-*only* `exam_assignment.user_id` — the owner — and nothing else. The
-403/404 decision is made from that single scalar. The submission's score,
-answers and breakdown are only fetched by the *second* query, which is
-unreachable for a caller that failed the check. There is therefore no
-moment at which result data exists in memory for an unauthorised caller,
-and no "load then filter" ordering mistake is possible.
-
-**WARN-4 — `list_submissions_for_exam` does not N+1.** It eager-loads
-`Submission.answers` (`selectinload`) and `Submission.exam_assignment`
-(`joinedload`), so the query count is a constant 2 no matter how many
-submissions the exam has.
-"""
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.submission import Submission

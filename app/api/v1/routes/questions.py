@@ -1,14 +1,3 @@
-"""`/questions` — admin-only question bank CRUD (FR-3).
-
-Every route requires `role="admin"` — a router-level gate applied where
-this router is mounted (`app/api/v1/routers/__init__.py`).
-
-`POST /questions` is `multipart/form-data`, not JSON: the optional `image`
-is a file upload alongside `text` and `options`, so `options` travels as a
-JSON-encoded string form field and is parsed here before being handed to
-the use case.
-"""
-
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession

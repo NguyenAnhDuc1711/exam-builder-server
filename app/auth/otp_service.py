@@ -1,11 +1,3 @@
-"""OTP and Password Reset Token Service (AD-1, AD-4, AD-5, T010).
-
-Manages ephemeral state in Redis for:
-- 6-digit OTP generation and rate limiting (60s cooldown, 5 attempts max, 5 sends/hour ceiling).
-- Timing attack indistinguishability via dummy OTP entries for unknown emails.
-- Single-use reset tokens with single-token-per-email ownership tracking.
-"""
-
 import secrets
 from redis.asyncio import Redis
 
@@ -81,12 +73,6 @@ async def request_otp(redis: Redis, email: str, user_exists: bool) -> str | None
 
 
 async def verify_otp(redis: Redis, email: str, code: str) -> str:
-    """Verify the 6-digit OTP for the given normalized email.
-
-    On success, invalidates the OTP and returns a newly generated single-use reset token.
-    On 5th wrong attempt, invalidates both the OTP and the cooldown key (FAIL-2).
-    Raises InvalidOtpError on missing key, invalid code, or attempt exhaustion.
-    """
     h = hash_token(email)
     otp_key = f"otp:{h}"
     cooldown_key = f"otp_cooldown:{h}"

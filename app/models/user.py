@@ -1,12 +1,3 @@
-"""`user` table — SQLAlchemy 2.0 ORM model.
-
-NFR-3: single-tenant. There is deliberately no `organization_id` column
-here or anywhere else in the schema.
-
-Note: `user` is a reserved word in PostgreSQL. SQLAlchemy/Alembic quote it
-automatically; any hand-written SQL must spell it `"user"`.
-"""
-
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint, DateTime, Integer, String

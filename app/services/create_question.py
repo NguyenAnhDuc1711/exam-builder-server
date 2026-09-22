@@ -1,23 +1,3 @@
-"""Use case: admin creates a question for the question bank (FR-3).
-
-Two rules enforced here, both from plan-review and both checked *before*
-any image ever reaches Cloudinary:
-
-- Exactly one option must have `is_correct=True` (else `InvalidOptionsError`,
-  mapped to 400 by the router).
-- An attached image's real type is sniffed from its magic bytes (WARN-3) —
-  the client-supplied `Content-Type` header is never trusted for this
-  check — and its size is capped at 5MB, before `ImageStoragePort.upload`
-  is ever called. Either failure raises `InvalidImageError` (400) with
-  Cloudinary never invoked.
-
-If the image passes validation but the upload itself fails (network error,
-Cloudinary outage, etc.), that is NOT a 400: `UploadError` is caught here
-and the question is still saved, with `image_url=None` and a warning
-message returned alongside it (NFR-2) — a broken image host must never
-block question creation.
-"""
-
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,11 +60,6 @@ async def create_question(
     options: list[OptionInput],
     image: bytes | None = None,
 ) -> CreateQuestionResult:
-    """Create and persist a question with its options.
-
-    Raises `InvalidOptionsError` or `InvalidImageError` (both mapped to 400
-    by the router) before touching the database or `image_storage`.
-    """
     if not _has_single_correct_option(options):
         raise InvalidOptionsError("Exactly one option must be marked correct")
 

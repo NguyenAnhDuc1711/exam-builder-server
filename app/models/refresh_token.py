@@ -1,10 +1,3 @@
-"""`refresh_token` table (AD-2).
-
-R-6: `token_hash` stores the SHA-256 **hex digest** of the refresh token,
-never the plaintext token. `family_id` groups every token issued from one
-login so that reuse of an already-revoked token can revoke the whole family.
-"""
-
 import sqlalchemy as sa
 from datetime import datetime
 

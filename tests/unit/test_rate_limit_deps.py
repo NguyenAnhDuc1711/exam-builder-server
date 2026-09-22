@@ -66,7 +66,7 @@ async def test_rate_limit_disabled_short_circuits():
 
 
 @pytest.mark.asyncio
-async def test_login_rate_limit_checks_both_keys():
+async def test_login_rate_limit_checks_composite_key():
     request = MagicMock()
     request.client.host = "1.2.3.4"
     body = LoginRequest(email="Victim@example.com", password="pw")
@@ -78,8 +78,6 @@ async def test_login_rate_limit_checks_both_keys():
         ) as mock_check:
             await login_rate_limit(request=request, body=body)
 
-            # Assert both IP and email keys checked (AD-7)
-            assert mock_check.call_count == 2
-            called_keys = [call[0][0] for call in mock_check.call_args_list]
-            assert any(k.startswith("rl:auth:ip:1.2.3.4") for k in called_keys)
-            assert any(k.startswith("rl:auth:em:") for k in called_keys)
+            assert mock_check.call_count == 1
+            called_key = mock_check.call_args[0][0]
+            assert called_key.startswith("rl:auth:login:1.2.3.4:")

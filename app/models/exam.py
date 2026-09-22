@@ -1,14 +1,3 @@
-"""`exam` / `exam_question` / `exam_assignment` tables.
-
-- `exam_question` is the ordered link table (composite PK on
-  `(exam_id, question_id)`, which also guarantees a question cannot be
-  added to the same exam twice).
-- `exam_assignment` carries UNIQUE(exam_id, user_id): an exam is assigned
-  to a given user at most once (FR-5).
-
-Note: `order` is a reserved word in SQL; SQLAlchemy/Alembic quote it.
-"""
-
 import sqlalchemy as sa
 from datetime import datetime
 

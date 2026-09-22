@@ -1,17 +1,3 @@
-"""Password hashing and opaque-token hashing.
-
-Two *deliberately different* primitives (R-6):
-
-* `hash_password` / `verify_password` use **bcrypt** — slow by design, so a
-  leaked `user.password_hash` is expensive to brute-force. Passwords are
-  low-entropy human input, so the cost factor is the whole point.
-* `hash_token` uses **SHA-256** — fast, deterministic, unsalted, so a
-  refresh token can be looked up by an indexed equality match. That is safe
-  only because refresh tokens are 256+ bits of `secrets`-grade entropy:
-  there is nothing to brute-force. Never use this for passwords, and never
-  use bcrypt for refresh tokens (a salted hash cannot be looked up).
-"""
-
 import hashlib
 
 from passlib.context import CryptContext

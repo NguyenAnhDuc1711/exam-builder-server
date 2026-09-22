@@ -1,35 +1,3 @@
-"""JWT access tokens + rotating opaque refresh tokens with reuse detection.
-
-Shape (AD-2):
-
-* **Access token** — a signed JWT, `{sub, role, iat, exp}`, valid for
-  `JWT_ACCESS_EXPIRE_MINUTES` (1440 = 24h). Stateless: never stored, never
-  revocable before `exp`. That is the accepted trade-off for v1.
-* **Refresh token** — an opaque, `secrets`-generated random string. It is
-  *not* a JWT: it carries no claims, so there is nothing to forge. Only its
-  SHA-256 hash is written to `refresh_token.token_hash` (R-6); the plaintext
-  exists exactly once, in the login/refresh response body.
-
-Rotation + reuse detection (the standard `family_id` scheme used by Auth0
-and Supabase — deliberately not a home-grown algorithm):
-
-    login            -> family F, token A (revoked=False)
-    refresh(A)       -> A.revoked=True, issue B in family F
-    refresh(A) again -> A.revoked is already True => the token leaked and
-                        somebody is replaying it. Revoke *every* row with
-                        family_id == F (including the still-valid B) and
-                        raise. Both the attacker and the victim are logged
-                        out; the victim re-authenticates, the attacker
-                        cannot. (Note: post-reset, hitting reuse detection is
-                        also the expected shape of a legitimate refresh attempt
-                        with tokens invalidated via password reset).
-
-Transactions: this service only `flush()`es, never `commit()`s — the caller
-owns the transaction boundary (CRIT-1). **The caller must commit even on the
-`RotationError` path**, otherwise the family revocation is rolled back and
-reuse detection silently does nothing. See `app/api/v1/routes/auth.py`.
-"""
-
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone

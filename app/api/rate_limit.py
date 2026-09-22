@@ -1,14 +1,3 @@
-"""FastAPI rate limiting dependencies (AD-2, AD-6, AD-7, T011).
-
-Provides:
-- `rate_limit(group)`: dependency for authenticated endpoints keyed by user_id.
-- `login_rate_limit`: dedicated dependency for POST /auth/login checking IP and email independently.
-- `refresh_rate_limit`: dependency for POST /auth/refresh checking IP.
-- `ip_rate_limit(group)`: dependency for unauthenticated endpoints.
-- Rejection helper `_reject`: logs NTH-1 warning and raises HTTP 429 with Retry-After header.
-- Tagged with `__rate_limit_group__` on callables for coverage verification (T012).
-"""
-
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -80,10 +69,10 @@ async def login_rate_limit(
     request: Request,
     body: LoginRequest,
 ) -> None:
-    """Login rate limiter checking IP and email keys independently (FR-3, AD-7).
+    """Login rate limiter checking composite IP + email key.
 
-    Increments both counters before deciding, preventing an attacker from keeping
-    one counter cold by tripping the other.
+    Combines client IP and hashed email to prevent cross-account lockout
+    on shared NAT/WiFi networks while avoiding account DoS across different networks.
     """
     if not settings.RATE_LIMIT_ENABLED:
         return
@@ -93,17 +82,11 @@ async def login_rate_limit(
     normalized_email = body.email.strip().lower()
     email_hash = hash_token(normalized_email)
 
-    ip_key = f"rl:auth:ip:{ip}"
-    em_key = f"rl:auth:em:{email_hash}"
+    key = f"rl:auth:login:{ip}:{email_hash}"
+    verdict = await check(key, limit, window)
 
-    # Increment both before either verdict (AD-7)
-    v_ip = await check(ip_key, limit, window)
-    v_em = await check(em_key, limit, window)
-
-    if not v_ip.allowed:
-        _reject("auth", "ip", ip, v_ip.retry_after)
-    if not v_em.allowed:
-        _reject("auth", "em", email_hash, v_em.retry_after)
+    if not verdict.allowed:
+        _reject("auth", "login", f"{ip}:{email_hash}", verdict.retry_after)
 
 
 login_rate_limit.__rate_limit_group__ = "auth"

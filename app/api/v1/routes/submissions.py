@@ -1,20 +1,3 @@
-"""`/exams/{id}/submit` + `/submissions` — submission and results (FR-6, FR-7).
-
-Auth differs per route, so there is no router-level gate here (unlike
-`questions.py` / `exams.py`):
-
-- `POST /exams/{assignment_id}/submit` — any authenticated user; the use
-  case rejects an assignment that is not theirs with 403.
-- `GET /submissions/{submission_id}` — any authenticated user; the use case
-  enforces "owner or admin" (CRIT-2) before reading any result data.
-- `GET /exams/{exam_id}/submissions` — `require_role("admin")`.
-
-`POST /exams/{assignment_id}/submit` takes the **assignment** id, not the
-exam id (an `ExamAssignment` is what pins the exam to this user), and does
-not collide with `exams.py`'s `POST /exams/{exam_id}/assign` or
-`GET /exams/{exam_id}`.
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 

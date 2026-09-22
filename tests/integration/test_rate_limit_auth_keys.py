@@ -112,8 +112,8 @@ async def test_sc6_two_users_on_same_ip_have_independent_counters(client, seed_u
 
 
 @pytest.mark.asyncio
-async def test_sc7_scenario_a_login_blocked_by_ip_key_many_emails(session):
-    """SC-7 Scenario A: Attacking multiple emails from 1 IP trips IP counter."""
+async def test_login_composite_key_allows_different_emails_on_same_ip(session):
+    """Different emails on the same IP have independent counters (no cross-account lockout on shared NAT)."""
     app.dependency_overrides[get_session] = lambda: session
     transport = ASGITransport(app=app, client=("198.51.100.1", 50000))
 
@@ -123,33 +123,27 @@ async def test_sc7_scenario_a_login_blocked_by_ip_key_many_emails(session):
                 reset_for_tests()
 
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
-                    # Request 1 with email 1 -> 401 (allowed through rate limit)
+                    # Target 1: 2 requests -> 401 (allowed through rate limit)
                     r1 = await client.post("/auth/login", json={"email": "target1@example.com", "password": "wrong"})
                     assert r1.status_code == 401
-
-                    # Request 2 with email 2 -> 401 (allowed through rate limit)
-                    r2 = await client.post("/auth/login", json={"email": "target2@example.com", "password": "wrong"})
+                    r2 = await client.post("/auth/login", json={"email": "target1@example.com", "password": "wrong"})
                     assert r2.status_code == 401
 
-                    # Request 3 with email 3 -> 429 (IP limit of 2 reached)
-                    r3 = await client.post("/auth/login", json={"email": "target3@example.com", "password": "wrong"})
+                    # Target 1: 3rd request -> 429 (limit reached for target1 on this IP)
+                    r3 = await client.post("/auth/login", json={"email": "target1@example.com", "password": "wrong"})
                     assert r3.status_code == 429
                     assert int(r3.headers["Retry-After"]) >= 1
 
-                # Verify a DIFFERENT IP can still attempt login with target3@example.com
-                transport2 = ASGITransport(app=app, client=("203.0.113.2", 50000))
-                async with AsyncClient(transport=transport2, base_url="http://test") as client2:
-                    r_clean = await client2.post(
-                        "/auth/login", json={"email": "target3@example.com", "password": "wrong"}
-                    )
-                    assert r_clean.status_code == 401
+                    # Target 2 on the SAME IP is NOT blocked -> 401
+                    r_target2 = await client.post("/auth/login", json={"email": "target2@example.com", "password": "wrong"})
+                    assert r_target2.status_code == 401
 
     app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
-async def test_sc7_scenario_b_login_blocked_by_email_key_many_ips(session, seed_users):
-    """SC-7 Scenario B: Attacking 1 email from multiple IPs trips email counter."""
+async def test_login_composite_key_allows_same_email_on_different_ip(session, seed_users):
+    """Same email on a different IP is not blocked by another IP's exhausted counter."""
     app.dependency_overrides[get_session] = lambda: session
 
     with patch.object(settings, "RATE_LIMIT_ENABLED", True):
@@ -157,29 +151,23 @@ async def test_sc7_scenario_b_login_blocked_by_email_key_many_ips(session, seed_
             with patch.object(settings, "RATE_LIMIT_AUTH_WINDOW_SECONDS", 60):
                 reset_for_tests()
 
-                # IP 1 attacks victim@example.com
+                # IP 1 attempts victim@example.com twice
                 t1 = ASGITransport(app=app, client=("10.0.0.1", 10001))
                 async with AsyncClient(transport=t1, base_url="http://test") as c1:
                     r1 = await c1.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
                     assert r1.status_code == 401
-
-                # IP 2 attacks victim@example.com
-                t2 = ASGITransport(app=app, client=("10.0.0.2", 10002))
-                async with AsyncClient(transport=t2, base_url="http://test") as c2:
-                    r2 = await c2.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
+                    r2 = await c1.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
                     assert r2.status_code == 401
 
-                # IP 3 attacks victim@example.com -> trips email counter (limit = 2) -> 429
-                t3 = ASGITransport(app=app, client=("10.0.0.3", 10003))
-                async with AsyncClient(transport=t3, base_url="http://test") as c3:
-                    r3 = await c3.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
+                    # IP 1 3rd attempt -> 429
+                    r3 = await c1.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
                     assert r3.status_code == 429
                     assert int(r3.headers["Retry-After"]) >= 1
 
-                    # IP 3 targeting a DIFFERENT email (other@example.com) is NOT blocked (IP 3 only sent 1 request)
-                    r_other = await c3.post(
-                        "/auth/login", json={"email": "other@example.com", "password": "wrong"}
-                    )
-                    assert r_other.status_code == 401
+                # IP 2 (different network/device) attempts victim@example.com -> NOT blocked
+                t2 = ASGITransport(app=app, client=("10.0.0.2", 10002))
+                async with AsyncClient(transport=t2, base_url="http://test") as c2:
+                    r_ip2 = await c2.post("/auth/login", json={"email": "victim@example.com", "password": "wrong"})
+                    assert r_ip2.status_code == 401
 
     app.dependency_overrides.clear()

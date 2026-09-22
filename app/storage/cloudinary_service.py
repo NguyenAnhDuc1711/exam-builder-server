@@ -1,12 +1,3 @@
-"""Cloudinary implementation of `ImageStoragePort` (AD-3).
-
-Every exception the Cloudinary SDK can raise (network errors, timeouts,
-`cloudinary.exceptions.Error`, etc.) is caught here and re-raised as
-`UploadError` — no raw SDK exception is allowed to escape this module, so
-callers (the `create_question` use case) only ever need to handle one
-exception type.
-"""
-
 import asyncio
 import io
 
@@ -26,9 +17,6 @@ cloudinary.config(
 class CloudinaryImageStorage(ImageStoragePort):
     async def upload(self, file: bytes, content_type: str) -> str:
         try:
-            # The SDK's `upload` is synchronous/blocking; run it off the
-            # event loop thread so a slow Cloudinary call doesn't stall
-            # other requests.
             result = await asyncio.to_thread(
                 cloudinary.uploader.upload, io.BytesIO(file)
             )
