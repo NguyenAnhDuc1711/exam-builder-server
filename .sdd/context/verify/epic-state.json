@@ -1,9 +1,0 @@
-{
-  "phase_a": "PASS",
-  "phase_b": "BLOCKED_ENV",
-  "overall": "BLOCKED_ENV",
-  "timestamp": "2026-09-21T10:17:32Z",
-  "epic": "exam-builder-base",
-  "iterations": 0,
-  "note": "Phase B (build/lint/unit/integration tiers) requires a Python + Docker runtime, unavailable in this execution environment. 0 tiers executed. Must be run for real before this epic can be marked EPIC_COMPLETE."
-}
