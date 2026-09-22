@@ -3,7 +3,7 @@
 The single most important test file in this epic. A submission holds a
 user's score and their per-question answers; the *only* thing standing
 between that and another logged-in user is the "owner or admin" check in
-`app.application.use_cases.get_results.get_submission`. These tests pin
+`app.services.get_results.get_submission`. These tests pin
 down all four cases:
 
   owner        -> 200 + full breakdown
@@ -19,13 +19,13 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.v1.routers.auth import router as auth_router
-from app.api.v1.routers.submissions import router as submissions_router
+from app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.submissions import router as submissions_router
 from app.core.security import hash_password
-from app.infrastructure.db.models.exam import Exam, ExamAssignment, ExamQuestion
-from app.infrastructure.db.models.question import Option, Question
-from app.infrastructure.db.models.user import User
-from app.infrastructure.db.session import get_session
+from app.models.exam import Exam, ExamAssignment, ExamQuestion
+from app.models.question import Option, Question
+from app.models.user import User
+from app.core.database import get_session
 
 
 @pytest_asyncio.fixture

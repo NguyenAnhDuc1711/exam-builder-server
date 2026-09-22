@@ -9,13 +9,13 @@ import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.api.v1.routers.auth import router as auth_router
-from app.api.v1.routers.exams import router as exams_router
+from app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.exams import router as exams_router
 from app.core.security import hash_password
-from app.infrastructure.db.models.exam import Exam
-from app.infrastructure.db.models.question import Question
-from app.infrastructure.db.models.user import User
-from app.infrastructure.db.session import get_session
+from app.models.exam import Exam
+from app.models.question import Question
+from app.models.user import User
+from app.core.database import get_session
 
 
 @pytest_asyncio.fixture

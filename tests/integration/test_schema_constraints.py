@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.infrastructure.db.models import (
+from app.models import (
     Exam,
     ExamAssignment,
     Option,

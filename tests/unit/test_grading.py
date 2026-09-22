@@ -6,7 +6,7 @@ test: the fixture below *is* the answer key.
 Unexecuted (no Python available in the authoring environment).
 """
 
-from app.application.use_cases.submit_exam import AnswerInput, grade
+from app.services.submit_exam import AnswerInput, grade
 
 # The answer key: question_id -> id of that question's correct Option.
 # Insertion order is the exam's question order, which `grade` preserves.

@@ -30,8 +30,8 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 from sqlalchemy.pool import NullPool  # noqa: E402
 
-import app.infrastructure.db.models  # noqa: E402,F401  (registers tables)
-from app.infrastructure.db.base import Base  # noqa: E402
+import app.models  # noqa: E402,F401  (registers tables)
+from app.models.base import Base  # noqa: E402
 
 
 @pytest_asyncio.fixture

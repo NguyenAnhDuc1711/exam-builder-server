@@ -17,13 +17,13 @@ from httpx import ASGITransport, AsyncClient
 from jose import jwt
 from sqlalchemy import select
 
-from app.api.dependencies import require_role
-from app.api.v1.routers.auth import router as auth_router
+from app.api.deps import require_role
+from app.api.v1.routes.auth import router as auth_router
 from app.core.security import hash_password
-from app.infrastructure.auth.jwt_service import JWT_ALGORITHM
-from app.infrastructure.db.models.refresh_token import RefreshToken
-from app.infrastructure.db.models.user import User
-from app.infrastructure.db.session import get_session
+from app.auth.jwt_service import JWT_ALGORITHM
+from app.models.refresh_token import RefreshToken
+from app.models.user import User
+from app.core.database import get_session
 from app.main import app as main_app
 
 JWT_SECRET_KEY = "test-secret-key"  # matches tests/conftest.py

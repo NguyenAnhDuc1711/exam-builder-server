@@ -4,10 +4,8 @@ NOTE (T002): written without a Python runtime available in the authoring
 environment — unexecuted, see the T002 handoff.
 """
 
-from pathlib import Path
-
-import app.infrastructure.db.models  # noqa: F401  (registers tables)
-from app.infrastructure.db.base import Base
+import app.models  # noqa: F401  (registers tables)
+from app.models.base import Base
 
 EXPECTED_TABLES = {
     "user",
@@ -21,8 +19,6 @@ EXPECTED_TABLES = {
     "refresh_token",
 }
 
-ENTITIES_DIR = Path(__file__).resolve().parents[2] / "app" / "domain" / "entities"
-
 
 def test_all_nine_tables_are_defined():
     assert set(Base.metadata.tables) == EXPECTED_TABLES
@@ -35,13 +31,6 @@ def test_no_multi_tenant_columns_anywhere():
             name = column.name.lower()
             assert "organization" not in name, f"{table.name}.{column.name}"
             assert "tenant" not in name, f"{table.name}.{column.name}"
-
-
-def test_domain_entities_do_not_import_sqlalchemy():
-    """AD-1: `app/domain/` stays framework-free."""
-    for path in ENTITIES_DIR.glob("*.py"):
-        source = path.read_text(encoding="utf-8")
-        assert "sqlalchemy" not in source.lower(), path.name
 
 
 def test_submission_enforces_single_attempt():

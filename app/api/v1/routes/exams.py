@@ -1,0 +1,84 @@
+"""`/exams` — admin-only exam assembly + assignment (FR-4, FR-5).
+
+Every route requires `role="admin"` — a router-level gate applied where
+this router is mounted (`app/api/v1/routers/__init__.py`), same pattern as
+`app/api/v1/routers/questions.py`.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.exams import (
+    AssignExamRequest,
+    CreateExamRequest,
+    ExamAssignmentResponse,
+    ExamResponse,
+)
+from app.services.assemble_exam import (
+    MissingQuestionsError,
+    create_exam,
+    get_exam,
+)
+from app.services.assign_exam import (
+    DuplicateAssignmentError,
+    ExamNotFoundError,
+    UserNotFoundError,
+    assign_exam,
+)
+from app.models.exam import Exam, ExamAssignment
+from app.core.database import get_session
+
+router = APIRouter()
+
+
+@router.post("", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+async def create_exam_route(
+    body: CreateExamRequest,
+    session: AsyncSession = Depends(get_session),
+) -> Exam:
+    try:
+        return await create_exam(session, body.title, body.question_ids)
+    except MissingQuestionsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "message": "Unknown question ids",
+                "missing_ids": exc.missing_ids,
+            },
+        )
+
+
+@router.post(
+    "/{exam_id}/assign",
+    response_model=ExamAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def assign_exam_route(
+    exam_id: int,
+    body: AssignExamRequest,
+    session: AsyncSession = Depends(get_session),
+) -> ExamAssignment:
+    try:
+        return await assign_exam(session, exam_id, body.user_id)
+    except (ExamNotFoundError, UserNotFoundError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+        )
+    except DuplicateAssignmentError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Exam already assigned to this user",
+        )
+
+
+@router.get("/{exam_id}", response_model=ExamResponse)
+async def get_exam_route(
+    exam_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> Exam:
+    exam = await get_exam(session, exam_id)
+    if exam is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found"
+        )
+    return exam

@@ -16,9 +16,9 @@ import sys
 
 from sqlalchemy import select
 
+from app.core.database import AsyncSessionLocal
 from app.core.security import hash_password
-from app.infrastructure.db.models.user import User
-from app.infrastructure.db.session import AsyncSessionLocal
+from app.models.user import User
 
 
 async def seed_admin(email: str, password: str) -> None:

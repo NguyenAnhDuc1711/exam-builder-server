@@ -30,11 +30,11 @@ from unittest.mock import AsyncMock
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.api.v1.routers.questions import get_image_storage
-from app.application.ports.image_storage import ImageStoragePort
+from app.api.v1.routes.questions import get_image_storage
+from app.ports.image_storage import ImageStoragePort
 from app.core.security import hash_password
-from app.infrastructure.db.models.user import User
-from app.infrastructure.db.session import get_session
+from app.models.user import User
+from app.core.database import get_session
 from app.main import app as main_app
 
 _PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"fake-png-body"
