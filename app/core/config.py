@@ -23,5 +23,36 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
     CORS_ORIGINS: str
 
+    # Redis (forgot-password-otp — T001)
+    REDIS_URL: str
+
+    # SMTP (forgot-password-otp — T001)
+    SMTP_HOST: str
+    SMTP_PORT: int
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: str
+    SMTP_FROM_ADDRESS: str
+
+    # Rate limiting (api-rate-limiting epic)
+    RATE_LIMIT_ENABLED: bool = True
+
+    # Per-group thresholds & windows (defaults from FR-1)
+    RATE_LIMIT_AUTH_MAX: int = 5
+    RATE_LIMIT_AUTH_WINDOW_SECONDS: int = 60
+
+    RATE_LIMIT_WRITE_MAX: int = 30
+    RATE_LIMIT_WRITE_WINDOW_SECONDS: int = 60
+
+    RATE_LIMIT_SUBMIT_MAX: int = 10
+    RATE_LIMIT_SUBMIT_WINDOW_SECONDS: int = 60
+
+    RATE_LIMIT_READ_MAX: int = 100
+    RATE_LIMIT_READ_WINDOW_SECONDS: int = 60
+
+    # Degraded mode & circuit breaker (AD-4, AD-5)
+    RATE_LIMIT_REDIS_TIMEOUT_MS: int = 50
+    RATE_LIMIT_BREAKER_COOLDOWN_SECONDS: int = 5
+
+
 
 settings = Settings()

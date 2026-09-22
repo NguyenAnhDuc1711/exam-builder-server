@@ -95,3 +95,34 @@ def test_migrated_schema_has_no_multi_tenant_columns(empty_database):
         )
     )
     assert not [c for c in columns if "organization" in c or "tenant" in c]
+
+
+def test_migration_0002_adds_password_changed_at_column(empty_database):
+    config = _alembic_config()
+    command.upgrade(config, "0001_initial")
+    cols_0001 = asyncio.run(
+        _fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'user'"
+        )
+    )
+    assert "password_changed_at" not in cols_0001
+
+    command.upgrade(config, "head")
+    cols_head = asyncio.run(
+        _fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'user'"
+        )
+    )
+    assert "password_changed_at" in cols_head
+
+    command.downgrade(config, "0001_initial")
+    cols_downgrade = asyncio.run(
+        _fetch(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'user'"
+        )
+    )
+    assert "password_changed_at" not in cols_downgrade
+

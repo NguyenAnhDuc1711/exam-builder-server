@@ -49,3 +49,19 @@ def test_exam_assignment_is_unique_per_exam_and_user():
         if hasattr(uq, "columns") and uq.__class__.__name__ == "UniqueConstraint"
     }
     assert ("exam_id", "user_id") in constraint_columns
+
+
+def test_user_password_changed_at_column_is_timezone_aware():
+    from datetime import datetime, timezone
+    from app.models.user import User
+
+    col = Base.metadata.tables["user"].columns["password_changed_at"]
+    assert col.nullable is True
+    assert col.type.timezone is True
+
+    user = User(email="test@example.com", password_hash="hash", role="user")
+    assert user.password_changed_at is None
+    now = datetime.now(timezone.utc)
+    user.password_changed_at = now
+    assert user.password_changed_at.tzinfo is not None
+

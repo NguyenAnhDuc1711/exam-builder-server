@@ -1,10 +1,19 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
+from app.core.redis import redis_client
 
-app = FastAPI(title="Exam Builder API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await redis_client.aclose()
+
+
+app = FastAPI(title="Exam Builder API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,11 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mounted at the root (no `/api/v1` prefix): the epic's task specs pin the
-# paths as `/auth/login`, `/users`, `/questions`, `/exams`. Each sub-router's
-# own prefix/tags/dependencies are assigned in `app/api/v1/router.py`.
 app.include_router(v1_router)
-
 
 @app.get("/health")
 async def health() -> dict[str, str]:

@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_role
+from app.api.rate_limit import rate_limit
 from app.schemas.submissions import (
     ExamSubmissionResponse,
     GradedAnswerResponse,
@@ -43,13 +44,14 @@ from app.services.submit_exam import (
 from app.models.user import User
 from app.core.database import get_session
 
-router = APIRouter()
+router = APIRouter(tags=["submissions"])
 
 
 @router.post(
     "/exams/{assignment_id}/submit",
     response_model=SubmitExamResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("submit"))],
 )
 async def submit_exam_route(
     assignment_id: int,
@@ -99,7 +101,11 @@ async def submit_exam_route(
     )
 
 
-@router.get("/submissions/{submission_id}", response_model=SubmissionResponse)
+@router.get(
+    "/submissions/{submission_id}",
+    response_model=SubmissionResponse,
+    dependencies=[Depends(rate_limit("read"))],
+)
 async def get_submission_route(
     submission_id: int,
     session: AsyncSession = Depends(get_session),
@@ -138,7 +144,7 @@ async def get_submission_route(
 @router.get(
     "/exams/{exam_id}/submissions",
     response_model=list[ExamSubmissionResponse],
-    dependencies=[Depends(require_role("admin"))],
+    dependencies=[Depends(require_role("admin")), Depends(rate_limit("read"))],
 )
 async def list_exam_submissions_route(
     exam_id: int,

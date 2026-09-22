@@ -7,7 +7,8 @@ this router is mounted (`app/api/v1/routers/__init__.py`), same pattern as
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.api.deps import require_role
+from app.api.rate_limit import rate_limit
 from app.schemas.exams import (
     AssignExamRequest,
     CreateExamRequest,
@@ -28,10 +29,19 @@ from app.services.assign_exam import (
 from app.models.exam import Exam, ExamAssignment
 from app.core.database import get_session
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/exams",
+    tags=["exams"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 
-@router.post("", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ExamResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("write"))],
+)
 async def create_exam_route(
     body: CreateExamRequest,
     session: AsyncSession = Depends(get_session),
@@ -52,6 +62,7 @@ async def create_exam_route(
     "/{exam_id}/assign",
     response_model=ExamAssignmentResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("write"))],
 )
 async def assign_exam_route(
     exam_id: int,
@@ -71,7 +82,11 @@ async def assign_exam_route(
         )
 
 
-@router.get("/{exam_id}", response_model=ExamResponse)
+@router.get(
+    "/{exam_id}",
+    response_model=ExamResponse,
+    dependencies=[Depends(rate_limit("read"))],
+)
 async def get_exam_route(
     exam_id: int,
     session: AsyncSession = Depends(get_session),

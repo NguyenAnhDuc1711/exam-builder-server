@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role
+from app.api.rate_limit import rate_limit
 from app.schemas.users import CreateUserRequest, UserResponse
 from app.services.create_user import (
     EmailAlreadyExistsError,
@@ -16,14 +17,14 @@ from app.services.create_user import (
 from app.models.user import User
 from app.core.database import get_session
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post(
     "",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("admin"))],
+    dependencies=[Depends(require_role("admin")), Depends(rate_limit("write"))],
 )
 async def create_user_route(
     body: CreateUserRequest,

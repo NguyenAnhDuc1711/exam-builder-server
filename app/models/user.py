@@ -7,7 +7,9 @@ Note: `user` is a reserved word in PostgreSQL. SQLAlchemy/Alembic quote it
 automatically; any hand-written SQL must spell it `"user"`.
 """
 
-from sqlalchemy import CheckConstraint, Integer, String
+from datetime import datetime
+
+from sqlalchemy import CheckConstraint, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -25,3 +27,7 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+

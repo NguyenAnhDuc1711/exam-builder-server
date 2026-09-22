@@ -13,6 +13,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_role
+from app.api.rate_limit import rate_limit
+
 from app.schemas.questions import (
     CreateQuestionResponse,
     OptionResponse,
@@ -31,7 +34,11 @@ from app.models.question import Question
 from app.core.database import get_session
 from app.storage.cloudinary_service import CloudinaryImageStorage
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/questions",
+    tags=["questions"],
+    dependencies=[Depends(require_role("admin"))],
+)
 
 # A single long-lived instance: `CloudinaryImageStorage` holds no per-request
 # state (the SDK is configured once, at import time).
@@ -46,7 +53,10 @@ _options_adapter = TypeAdapter(list[OptionSchema])
 
 
 @router.post(
-    "", response_model=CreateQuestionResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=CreateQuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("write"))],
 )
 async def create_question_route(
     # `question.text` is `Text` (unbounded) at the DB layer, so this bound
@@ -91,7 +101,11 @@ async def create_question_route(
     )
 
 
-@router.get("", response_model=list[QuestionResponse])
+@router.get(
+    "",
+    response_model=list[QuestionResponse],
+    dependencies=[Depends(rate_limit("read"))],
+)
 async def list_questions_route(
     session: AsyncSession = Depends(get_session),
 ) -> list[Question]:

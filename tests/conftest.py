@@ -21,6 +21,15 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 os.environ.setdefault("CLOUDINARY_CLOUD_NAME", "test")
 os.environ.setdefault("CLOUDINARY_API_KEY", "test")
 os.environ.setdefault("CLOUDINARY_API_SECRET", "test")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
+os.environ.setdefault("SMTP_HOST", "localhost")
+os.environ.setdefault("SMTP_PORT", "1025")
+os.environ.setdefault("SMTP_USERNAME", "test")
+os.environ.setdefault("SMTP_PASSWORD", "test")
+os.environ.setdefault("SMTP_FROM_ADDRESS", "test@example.com")
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+
 
 import pytest_asyncio  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
@@ -52,3 +61,17 @@ async def session(db_engine):
     maker = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with maker() as db_session:
         yield db_session
+
+
+@pytest_asyncio.fixture
+async def redis_client():
+    """A real (or stubbed) Redis client, flushed after each test."""
+    import redis.asyncio as redis_lib
+
+    client = redis_lib.from_url(os.environ["REDIS_URL"], decode_responses=True)
+    yield client
+    await client.flushdb()
+    await client.aclose()
+    from app.core.redis import redis_client as app_redis
+    await app_redis.connection_pool.disconnect()
+

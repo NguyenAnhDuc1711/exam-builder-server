@@ -20,12 +20,14 @@ and Supabase — deliberately not a home-grown algorithm):
                         family_id == F (including the still-valid B) and
                         raise. Both the attacker and the victim are logged
                         out; the victim re-authenticates, the attacker
-                        cannot.
+                        cannot. (Note: post-reset, hitting reuse detection is
+                        also the expected shape of a legitimate refresh attempt
+                        with tokens invalidated via password reset).
 
 Transactions: this service only `flush()`es, never `commit()`s — the caller
 owns the transaction boundary (CRIT-1). **The caller must commit even on the
 `RotationError` path**, otherwise the family revocation is rolled back and
-reuse detection silently does nothing. See `app/api/v1/routers/auth.py`.
+reuse detection silently does nothing. See `app/api/v1/routes/auth.py`.
 """
 
 import secrets
@@ -61,8 +63,6 @@ def decode_access_token(token: str) -> dict:
 class JwtTokenService(TokenServicePort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-
-    # ------------------------------------------------------------------ port
 
     async def create_token_pair(self, user_id: int, role: str) -> TokenPair:
         return await self._issue(
@@ -151,5 +151,18 @@ class JwtTokenService(TokenServicePort):
             .execution_options(synchronize_session="fetch")
         )
 
+    async def revoke_all_for_user(self, user_id: int) -> None:
+        """Revoke all active refresh tokens for a user (FR-6, T012).
+
+        Bounded to `revoked = False` rows to avoid unnecessary writes.
+        """
+        await self._session.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+            .values(revoked=True)
+            .execution_options(synchronize_session="fetch")
+        )
+
 
 __all__ = ["JWT_ALGORITHM", "JWTError", "JwtTokenService", "decode_access_token"]
+

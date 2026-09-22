@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -12,6 +12,16 @@ class UserRepository:
         return (
             await self._session.execute(select(User).where(User.email == email))
         ).scalar_one_or_none()
+
+    async def get_by_email_case_insensitive(self, email: str) -> User | None:
+        stmt = (
+            select(User)
+            .where(func.lower(User.email) == func.lower(email))
+            .limit(1)
+        )
+        res = await self._session.execute(stmt)
+        return res.scalars().first()
+
 
     async def get_by_id(self, user_id: int) -> User | None:
         return await self._session.get(User, user_id)

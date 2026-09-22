@@ -1,20 +1,3 @@
-"""Shared FastAPI dependencies: authentication and role authorization.
-
-Every protected router in this epic depends on these two symbols::
-
-    from app.api.deps import get_current_user, require_role
-
-    @router.post("/users", dependencies=[Depends(require_role("admin"))])
-    ...
-    # or, when the handler needs the caller:
-    async def handler(current_user: User = Depends(require_role("admin"))): ...
-
-`get_current_user` returns the **SQLAlchemy `User` model** (not the domain
-entity) loaded through the *same* request-scoped session the router gets
-from `get_session` — FastAPI caches `Depends(get_session)` per request — so
-the returned object is live in that session and usable in further queries.
-"""
-
 from collections.abc import Awaitable, Callable
 
 from fastapi import Depends, HTTPException, status
@@ -25,10 +8,7 @@ from app.auth.jwt_service import JWTError, decode_access_token
 from app.models.user import User
 from app.core.database import get_session
 
-# auto_error=False so a missing header produces our own 401 with a
-# `WWW-Authenticate` header rather than FastAPI's bare 403.
 _bearer_scheme = HTTPBearer(auto_error=False)
-
 
 def _unauthorized() -> HTTPException:
     return HTTPException(
@@ -58,6 +38,16 @@ async def get_current_user(
     user = await session.get(User, user_id)
     if user is None:
         raise _unauthorized()
+
+    # Token invalidation post-reset (AD-3, FR-7)
+    if user.password_changed_at is not None:
+        iat = payload.get("iat")
+        if not isinstance(iat, (int, float)):
+            raise _unauthorized()
+        pwd_changed_epoch = int(user.password_changed_at.timestamp()) - 1
+        if int(iat) < pwd_changed_epoch:
+            raise _unauthorized()
+
     return user
 
 
