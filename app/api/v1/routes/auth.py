@@ -22,11 +22,37 @@ from app.schemas.auth import (
     VerifyOtpRequest,
     VerifyOtpResponse,
 )
+from app.schemas.users import CreateUserRequest
 from app.services import password_reset
+from app.services.create_user import EmailAlreadyExistsError, create_user
 from app.services.login import InvalidCredentialsError
 from app.services.login import login as login_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post(
+    "/register",
+    response_model=TokenPairResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(ip_rate_limit("auth"))],
+)
+async def register(
+    body: CreateUserRequest,
+    session: AsyncSession = Depends(get_session),
+) -> TokenPairResponse:
+    try:
+        await create_user(session, body.email, body.password)
+    except EmailAlreadyExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    pair = await login_service(session, body.email, body.password)
+    return TokenPairResponse(
+        access_token=pair.access_token, refresh_token=pair.refresh_token
+    )
 
 
 @router.post(

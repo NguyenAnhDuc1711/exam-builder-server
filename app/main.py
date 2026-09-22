@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
+from app.core.middleware import MaxBodySizeMiddleware
 from app.core.redis import redis_client
 
 
@@ -14,6 +15,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Exam Builder API", lifespan=lifespan)
+
+app.add_middleware(MaxBodySizeMiddleware, max_body_size=settings.MAX_REQUEST_BODY_BYTES)
 
 app.add_middleware(
     CORSMiddleware,

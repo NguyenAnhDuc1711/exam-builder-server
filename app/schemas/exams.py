@@ -1,11 +1,15 @@
 """Request/response models for `/exams`."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.sanitize import sanitize_text
 
 
 class CreateExamRequest(BaseModel):
     title: str = Field(max_length=255)
     question_ids: list[int]
+
+    _sanitize_title = field_validator("title")(sanitize_text)
 
 
 class ExamQuestionResponse(BaseModel):

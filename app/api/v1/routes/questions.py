@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role
 from app.api.rate_limit import rate_limit
+from app.core.sanitize import sanitize_text
 
 from app.schemas.questions import (
     CreateQuestionResponse,
@@ -63,10 +64,12 @@ async def create_question_route(
     # only guards the API boundary (same rationale as `OptionSchema.text`).
     text: str = Form(..., max_length=5000),
     options: str = Form(...),
-    image: UploadFile | None = File(None),
+    image: UploadFile | str | None = File(None),
     session: AsyncSession = Depends(get_session),
     image_storage: ImageStoragePort = Depends(get_image_storage),
 ) -> CreateQuestionResponse:
+    text = sanitize_text(text)
+
     try:
         parsed_options = _options_adapter.validate_json(options)
     except ValidationError:
@@ -77,7 +80,11 @@ async def create_question_route(
     option_inputs = [
         OptionInput(text=o.text, is_correct=o.is_correct) for o in parsed_options
     ]
-    image_bytes = await image.read() if image is not None else None
+    image_bytes: bytes | None = None
+    if hasattr(image, "read"):
+        raw = await image.read()
+        if len(raw) > 0:
+            image_bytes = raw
 
     try:
         result = await create_question(

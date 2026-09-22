@@ -1,7 +1,9 @@
 """`/users` — admin-only account creation (FR-2).
 
-There is no public sign-up route anywhere in the API; `POST /users` is the
-only way a `user` account is created, and only an admin may call it.
+`POST /users` lets an admin provision a `user` account directly. Public
+self-service sign-up is also available via `POST /auth/register`
+(`app/api/v1/routes/auth.py`); both routes share `create_user` and always
+create `role="user"` accounts.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status

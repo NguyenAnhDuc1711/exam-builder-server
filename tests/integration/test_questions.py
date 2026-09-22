@@ -100,6 +100,28 @@ async def test_create_text_only_question_returns_201(session, client):
     assert len(body["options"]) == 2
 
 
+async def test_create_question_with_empty_image_upload_returns_201(session, client):
+    """Browser/Swagger submitting an empty unselected file input must succeed."""
+    await _make_admin(session)
+    token = await _admin_token(client)
+
+    response = await client.post(
+        "/questions",
+        data={
+            "text": "Question with unselected file",
+            "options": _options_field(
+                [{"text": "A", "is_correct": True}, {"text": "B", "is_correct": False}]
+            ),
+        },
+        files={"image": ("", b"")},
+        headers=_auth(token),
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["image_url"] is None
+
+
 # ------------------------------------------------------------- valid image
 
 

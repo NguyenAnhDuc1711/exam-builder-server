@@ -1,11 +1,10 @@
-"""Use case: admin-created user accounts (FR-2).
+"""Use case: create a `user` account (FR-2).
 
-There is no public sign-up anywhere in the API (T003/T010 decision) — this
-is the only path that brings a `user` account into existence. `role` is a
-parameter here for testability, but the API surface (T010's router) never
-lets the caller set it: every account created through `POST /users` gets
-`role="user"`, so an admin cannot mint another admin through this endpoint
-in v1 (avoids uncontrolled privilege escalation).
+Shared by `POST /users` (admin-provisioned) and `POST /auth/register`
+(public self-service). `role` is a parameter here for testability, but
+neither route lets the caller set it: both always pass `role="user"`, so
+nobody can mint an admin through this path (avoids uncontrolled privilege
+escalation).
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession

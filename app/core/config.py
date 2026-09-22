@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_REDIS_TIMEOUT_MS: int = 50
     RATE_LIMIT_BREAKER_COOLDOWN_SECONDS: int = 5
 
+    # Hard cap on request body size (defense against oversized uploads).
+    # 6MB = the 5MB image cap (`create_question.MAX_IMAGE_SIZE_BYTES`) plus
+    # headroom for multipart framing and the other form fields.
+    MAX_REQUEST_BODY_BYTES: int = 6 * 1024 * 1024
+
 
 
 settings = Settings()

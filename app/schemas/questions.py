@@ -1,11 +1,15 @@
 """Request/response models for `/questions`."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.sanitize import sanitize_text
 
 
 class OptionSchema(BaseModel):
     text: str = Field(max_length=1000)
     is_correct: bool
+
+    _sanitize_text = field_validator("text")(sanitize_text)
 
 
 class OptionResponse(BaseModel):
